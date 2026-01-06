@@ -12,7 +12,7 @@ namespace DATABASPROJEKT___E_HANDEL_ADMIN.Migrations
         {
             // Automatically update TotalAmount when OrderRow is inserted
             migrationBuilder.Sql(@"
-                CREATE TRIGGER trg_UpdateOrderTotal
+                CREATE TRIGGER trg_UpdateOrderTotal_Insert
                 AFTER INSERT ON OrderRows
                 BEGIN
                     UPDATE Orders
@@ -22,6 +22,36 @@ namespace DATABASPROJEKT___E_HANDEL_ADMIN.Migrations
                         WHERE OrderId = NEW.OrderId
                     )
                     WHERE OrderId = NEW.OrderId;
+                END;
+            ");
+
+            // Automatically update TotalAmount when OrderRow is updated
+            migrationBuilder.Sql(@"
+                CREATE TRIGGER trg_UpdateOrderTotal_Update
+                AFTER UPDATE ON OrderRows
+                BEGIN
+                    UPDATE Orders
+                    SET TotalAmount = (
+                        SELECT COALESCE(SUM(Quantity * UnitPrice), 0)
+                        FROM OrderRows
+                        WHERE OrderId = NEW.OrderId
+                    )
+                    WHERE OrderId = NEW.OrderId;
+                END;
+            ");
+
+            // Automatically update TotalAmount when OrderRow is deleted
+            migrationBuilder.Sql(@"
+                CREATE TRIGGER trg_UpdateOrderTotal_Delete
+                AFTER DELETE ON OrderRows
+                BEGIN
+                    UPDATE Orders
+                    SET TotalAmount = (
+                        SELECT COALESCE(SUM(Quantity * UnitPrice), 0)
+                        FROM OrderRows
+                        WHERE OrderId = OLD.OrderId
+                    )
+                    WHERE OrderId = OLD.OrderId;
                 END;
             ");
 
@@ -59,8 +89,10 @@ namespace DATABASPROJEKT___E_HANDEL_ADMIN.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            // Drop trigger
-            migrationBuilder.Sql("DROP TRIGGER IF EXISTS trg_UpdateOrderTotal;");
+            // Drop triggers
+            migrationBuilder.Sql("DROP TRIGGER IF EXISTS trg_UpdateOrderTotal_Insert;");
+            migrationBuilder.Sql("DROP TRIGGER IF EXISTS trg_UpdateOrderTotal_Update;");
+            migrationBuilder.Sql("DROP TRIGGER IF EXISTS trg_UpdateOrderTotal_Delete;");
 
             // Drop views
             migrationBuilder.Sql("DROP VIEW IF EXISTS vw_ProductSummary;");
