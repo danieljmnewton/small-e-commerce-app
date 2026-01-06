@@ -62,8 +62,6 @@ public class OrderService
             _context.Orders.Add(order);
             await _context.SaveChangesAsync();
 
-            decimal totalAmount = 0;
-            
             foreach (var (productId, quantity) in items)
             {
                 var product = products.First(p => p.ProductId == productId);
@@ -77,17 +75,18 @@ public class OrderService
                 };
 
                 _context.OrderRows.Add(orderRow);
-                totalAmount += product.Price * quantity;
-                
+
                 product.StockQuantity -= quantity;
             }
-            
-            order.TotalAmount = totalAmount;
 
             await _context.SaveChangesAsync();
+
+            // Reload order to get trigger-calculated TotalAmount
+            await _context.Entry(order).ReloadAsync();
+
             await transaction.CommitAsync();
 
-            return (true, $"Order #{order.OrderId} created with total amount {totalAmount:C}.", order);
+            return (true, $"Order #{order.OrderId} created with total amount {order.TotalAmount:C}.", order);
         }
         catch (Exception ex)
         {
@@ -271,8 +270,6 @@ public class OrderService
 
             _context.OrderRows.Add(orderRow);
             product.StockQuantity -= quantity;
-            
-            order.TotalAmount += product.Price * quantity;
 
             await _context.SaveChangesAsync();
             await transaction.CommitAsync();
@@ -314,11 +311,9 @@ public class OrderService
                 await transaction.RollbackAsync();
                 return (false, $"Insufficient stock. Available: {orderRow.Product.StockQuantity}");
             }
-            
+
             orderRow.Product.StockQuantity -= quantityDiff;
-            
-            orderRow.Order!.TotalAmount += orderRow.UnitPrice * quantityDiff;
-            
+
             orderRow.Quantity = newQuantity;
 
             await _context.SaveChangesAsync();
@@ -350,10 +345,8 @@ public class OrderService
                 await transaction.RollbackAsync();
                 return (false, "Order row not found.");
             }
-            
-            orderRow.Product!.StockQuantity += orderRow.Quantity;
 
-            orderRow.Order!.TotalAmount -= orderRow.UnitPrice * orderRow.Quantity;
+            orderRow.Product!.StockQuantity += orderRow.Quantity;
 
             _context.OrderRows.Remove(orderRow);
 
