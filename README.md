@@ -9,7 +9,7 @@ A .NET 8 console application for managing an e-commerce database. Full CRUD oper
 **Prerequisites:** .NET 8 SDK
 
 ```bash
-git clone https://github.com/danieljmnewton/e-commerce-app.git
+git clone https://github.com/danieljmnewton/e-commerce-admin.git
 cd "DATABASPROJEKT - E-HANDEL ADMIN"
 ```
 
